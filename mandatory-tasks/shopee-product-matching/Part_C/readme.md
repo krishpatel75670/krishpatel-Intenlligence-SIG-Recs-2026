@@ -1,176 +1,69 @@
-# Part C - Image-Based Product Matching
+﻿# Part C: Image-Based Product Matching
 
 ## Objective
 
-Product titles are only one source of information available in the Shopee dataset.
+Investigate whether visual information from product images can be used to identify matching products using pretrained CNN embeddings.
 
-In this section, you will investigate whether **visual information** can be used to identify matching products.
+## Pipeline
 
-Your objective is to develop an image-based product matching system.
+Product Image -> Pretrained CNN -> L2-Normalized Embedding -> Cosine Similarity -> Threshold -> Match / No Match
 
----
+## Dataset
 
-## Task
+34,250 training images from the Shopee Product Matching dataset.
 
-Build a system that compares two product images and determines how likely they are to represent the same underlying product.
+## Pair Construction
 
-A general solution may follow a pipeline such as:
+- One positive pair per unique label group (two randomly chosen images from the same group).
+- Same number of negative pairs (two randomly chosen images from different groups).
 
-```text
-Product Image
-      ↓
-Image Representation
-      ↓
-Feature / Embedding
-      ↓
-Similarity
-      ↓
-Matching Decision
-```
+## Experiment 1: ResNet50 (Baseline)
 
-The exact approach is up to you.
+- ResNet50 pretrained on ImageNet, with the top classification layer removed, global average pooling applied.
+- Images resized to 224x224, preprocessed with ResNet50's expected normalization.
+- Inference run in batches of 64 using tf.data pipeline.
+- Produces 2048-dimensional embeddings per image.
+- Embeddings L2-normalized before similarity computation.
+- Cosine similarity computed between pairs.
+- Threshold sweep from 0.30 to 0.95 (step 0.01) to find the best F1 threshold.
 
----
+Metrics at best threshold: Precision, Recall, F1.
 
-## Baseline
+Embeddings saved to esnet50_embeddings.npy for reuse.
 
-Start with a pretrained computer vision model or another reasonable image representation method.
+## Experiment 2: EfficientNet-B0
 
-You may investigate approaches such as:
+- EfficientNet-B0 pretrained on ImageNet, global average pooling, no top layer.
+- Same 224x224 resizing, EfficientNet-specific preprocessing.
+- Produces 1280-dimensional embeddings.
+- Same threshold sweep and evaluation protocol as Experiment 1.
 
-* CNN-based models
-* ResNet
-* EfficientNet
-* Vision Transformers
-* CLIP
-* Other pretrained vision models
+## Results Comparison Table
 
-You are not restricted to these approaches.
-
----
-
-## Image Embeddings
-
-Investigate the concept of image embeddings.
-
-Your analysis should demonstrate an understanding of:
-
-* What an embedding represents
-* Why embeddings can be used for similarity search
-* How two image embeddings can be compared
-* How similarity scores can be converted into matching decisions
-
----
-
-## Experiments
-
-Experiment with at least **two approaches or configurations**.
-
-For each experiment, report:
-
-* Model/representation used
-* Embedding dimension
-* Similarity measure
-* Threshold
-* Computational considerations
-* Matching performance
-
-For example:
-
-| Experiment   | Model | Similarity | Threshold | Score |
-| ------------ | ----- | ---------- | --------- | ----- |
-| Baseline     | ...   | ...        | ...       | ...   |
-| Experiment 1 | ...   | ...        | ...       | ...   |
-| Experiment 2 | ...   | ...        | ...       | ...   |
-
----
+| Experiment  | Model           | Embedding Dim | Similarity | Threshold | Precision | Recall | F1 |
+|-------------|-----------------|---------------|------------|-----------|-----------|--------|----|
+| Baseline    | ResNet50        | 2048          | Cosine     | best      | ...       | ...    | ...|
+| Experiment 1| EfficientNet-B0 | 1280          | Cosine     | best      | ...       | ...    | ...|
 
 ## Nearest-Neighbor Analysis
 
-For selected products, retrieve the most visually similar products from the dataset.
-
-For example:
-
-```text
-Query Image
-     ↓
-Image Embedding
-     ↓
-Similarity Search
-     ↓
-Top-K Similar Products
-```
-
-Visualize the retrieved results and analyze whether the nearest neighbors actually correspond to the same product.
-
----
+For a query image, the top-5 most similar images by cosine similarity were retrieved from the full embedding matrix. The matched images were displayed with their similarity scores and product groups to visually verify whether nearest neighbors belong to the same product.
 
 ## Error Analysis
 
-Investigate cases such as:
+- False positives: image pairs predicted as matching but from different label groups. Visualized to identify common patterns (similar backgrounds, similar product categories, similar colors).
+- False negatives: image pairs from the same group predicted as not matching. Visualized to identify where the CNN representation failed (different angles, crops, backgrounds).
 
-* Same product photographed differently
-* Different products with similar appearance
-* Different colors or variants
-* Different packaging
-* Different backgrounds
-* Cropped images
-* Low-quality images
+## Computational Considerations
 
-Identify situations where your approach fails and explain why.
+- Embedding extraction requires passing all 34,250 images through a CNN, which is computationally expensive.
+- Comparing all pairs would require approximately 587 million comparisons; sampling was used for evaluation.
+- Embeddings are saved to disk and reused rather than recomputed.
 
----
+## Key Observations
 
-## Deliverables
-
-Submit:
-
-```text
-PartC/
-├── notebook.ipynb
-├── README.md
-└── results/
-```
-
-Your submission should include:
-
-* Image preprocessing
-* Baseline
-* Experiments
-* Similarity analysis
-* Nearest-neighbor examples
-* Error analysis
-* Conclusions
-
----
-
-## Questions to Consider
-
-> What information does an image embedding capture?
-
-> Why might two images of the same product have different embeddings?
-
-> Why might two different products have highly similar embeddings?
-
-> Which similarity metric works best for your representation?
-
-> How does the matching threshold affect your results?
-
-> What are the computational challenges of comparing a large number of images?
-
----
-
-## Evaluation
-
-Your work will be evaluated based on:
-
-* Understanding of image representations
-* Quality of experimentation
-* Interpretation of similarity
-* Error analysis
-* Computational awareness
-* Ability to justify design decisions
-
-You are not expected to train a vision model from scratch.
-
-The focus is on **understanding and effectively using visual representations for the matching problem**.
+- Pretrained CNN embeddings provide useful visual representations for product matching without training a model from scratch.
+- Cosine similarity on L2-normalized embeddings is a natural choice for comparing embedding vectors.
+- Image matching struggles when the same product appears with very different backgrounds, cropping, or orientation.
+- Visually similar but distinct products (same category, different model) cause false positives.
+- Image-based matching complements text-based matching because they fail in different situations.

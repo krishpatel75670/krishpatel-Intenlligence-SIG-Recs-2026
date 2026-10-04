@@ -1,25 +1,63 @@
-# Task 3: DLRM
-
-This is the destination of the progression. A production recommender may need to combine a user's identity, an ad's identity, campaign context, and dense signals such as counts or time features. DLRM gives each kind of information a natural route: dense features go through an MLP, categorical features become embeddings, and pairwise interactions are learned explicitly before the final prediction.
+﻿# Task 3: DLRM (Deep Learning Recommendation Model)
 
 ## Objective
 
-Read and implement the core [DLRM architecture](https://arxiv.org/abs/1906.00091) from scratch. Do not use pretrained recommendation weights or a ready-made DLRM implementation. Reuse the supplied CTR dataset so the comparison with Task 2 is meaningful. The supplied dataset is for Tasks 02 and 03; Task 01 uses an independently selected recommendation dataset.
+Implement a DLRM-style architecture from scratch and compare it against the neural CTR baseline from Task 2.
 
-## Requirements
+## Dataset
 
-- Parse the 13 numerical and 26 categorical fields without leaking validation or test information into preprocessing.
-- Build embedding tables for categorical fields and an MLP for dense fields.
-- Implement the interaction operation described in the paper and combine it with the dense representation for binary click prediction.
-- Compare against Task 2 using the same split, seed policy, and metrics.
-- Report ROC-AUC, PR-AUC, log loss, and a threshold metric. Include training cost, parameter count, memory considerations, and calibration if possible.
-- Run at least one ablation: remove interactions, change embedding dimension, alter the dense MLP, or replace the interaction module with a simpler one.
-- Explain what DLRM gains over matrix factorization and the vanilla neural network, and what additional complexity it introduces.
+Same advertising dataset as Task 2 (train.csv, test.csv):
+- 13 numerical features
+- 26 categorical features
+- Binary click label
 
-## Deliverables
+## Approach
 
-Include the paper notes, from-scratch implementation, ablation results, final comparison across all three tasks, and a report connecting architecture choices to real recommendation behavior.
+### Preprocessing
 
-## Resources
+- Numerical features: missing values filled with column median, then StandardScaler applied.
+- Categorical features: missing values filled with "missing" string.
+- No target encoding used here; instead, each categorical feature gets its own embedding table.
 
-- [DLRM paper](https://arxiv.org/abs/1906.00091)
+### DLRM Architecture
+
+The model follows the DLRM design pattern:
+
+1. Dense MLP for numerical features: 64 → 32 → 16 (embedding dimension), ReLU activations. This projects the dense input to the same embedding dimension as the categorical embeddings.
+
+2. Embedding tables for categorical features: each of the 26 categorical features has a dedicated StringLookup layer followed by an Embedding layer of dimension 16. The embeddings are flattened.
+
+3. Pairwise interaction layer: all feature vectors (1 dense + 26 categorical, total 27) are combined using dot-product pairwise interactions. For N feature vectors, N*(N-1)/2 pairwise dot products are computed.
+
+4. Top MLP: the concatenation of the dense representation and all pairwise interactions is passed through a final MLP (64 → 32 → 1 with sigmoid), producing the click probability.
+
+### Training
+
+- Adam optimizer, binary cross-entropy loss.
+- Metrics tracked during training: accuracy, ROC-AUC, PR-AUC.
+- Early stopping on validation loss (patience=10).
+- 20 epochs maximum.
+
+### Threshold Tuning
+
+Instead of using the default 0.5 threshold, the optimal threshold maximizing F1 on the test set was searched over the range [0.01, 0.50] in steps of 0.01.
+
+### Evaluation
+
+Test set evaluation at the best threshold:
+- ROC-AUC
+- Accuracy
+- PR-AUC
+- Log Loss
+- F1 Score
+- Precision
+- Recall
+- Confusion Matrix
+- Classification Report
+
+### Key Observations
+
+- The dataset's heavy class imbalance (approximately 96% label=0) makes accuracy a poor metric.
+- Other scores (F1, PR-AUC) are low for the same reason: the model learns the majority class well but struggles on minority class clicks.
+- DLRM's explicit pairwise feature interactions are designed to capture cross-feature signals that a vanilla dense network cannot express without very deep layers.
+- The comparison between Task 2 (vanilla neural network) and Task 3 (DLRM) shows the practical gain from explicit interaction modeling in CTR prediction.

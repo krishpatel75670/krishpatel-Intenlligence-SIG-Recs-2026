@@ -1,177 +1,53 @@
-# Part B - Text-Based Product Matching
+﻿# Part B: Text-Based Product Matching
 
 ## Objective
 
-In this section, you will attempt to solve the product matching problem using **textual information**.
+Build a product matching system using product title text and compare different text representations.
 
-Product listings contain titles that may provide useful information about product identity. However, these titles can also contain noise, abbreviations, spelling variations, multiple languages, seller-specific terminology, and irrelevant information.
+## Pipeline
 
-Your goal is to investigate how effectively textual information can be used for product matching.
+Product Titles -> Preprocessing -> Text Representation -> Cosine Similarity -> Threshold -> Match / No Match
 
----
+## Preprocessing
 
-## Task
+- Removed non-alphabetic characters (kept only letters and spaces).
+- Lowercased all titles.
+- Removed English stopwords using NLTK.
+- Applied WordNet lemmatization (verb form).
 
-Build a system that takes two product listings and determines whether they correspond to the same underlying product using their textual information.
+## Pair Construction
 
-Your system should follow the general pipeline:
+- 30,000 positive pairs sampled from within the same label group.
+- 30,000 negative pairs sampled from different label groups.
+- A separate 10,000-pair evaluation set was held out (not used for threshold tuning).
+- Final evaluation used an additional independent 10,000-pair set (5,000 positive, 5,000 negative).
 
-```text
-Product Titles
-      ↓
-Text Representation
-      ↓
-Similarity / Matching
-      ↓
-Prediction
-```
+## Experiment 1: TF-IDF (Baseline)
 
-The exact implementation is up to you.
+- TF-IDF vectorizer with unigrams and bigrams, max 2,500 features.
+- Cosine similarity between pairs.
+- Threshold of 0.5 used for the binary match decision.
+- Metrics: Accuracy, Precision, Recall, F1, Confusion Matrix.
 
----
+## Experiment 2: Word2Vec Embeddings
 
-## Baseline
+- Trained a Word2Vec skip-gram model (vector size=100, window=5, min_count=2, 20 epochs) on the preprocessed training titles.
+- Sentence embedding = mean of token embeddings (out-of-vocabulary tokens contribute zero vectors).
+- Threshold sweep from 0.5 to 1.0 (step 0.02) on the tuning set to find the best F1 threshold.
+- Evaluated at the best threshold on the independent evaluation set.
+- Metrics: Accuracy, Precision, Recall, F1, Confusion Matrix.
 
-Begin with a simple baseline approach.
+## Comparison
 
-You should establish a measurable baseline before experimenting with more sophisticated methods.
+Both methods were evaluated on the same evaluation pairs:
+- TF-IDF at threshold 0.5
+- Word2Vec at its best threshold from validation
 
-Possible techniques include:
+Results showed Precision and Recall tradeoffs between the two methods.
 
-* Bag of Words
-* TF-IDF
-* Word n-grams
-* Character n-grams
-* Word embeddings
-* Sentence embeddings
-* Transformer-based representations
+## Key Observations
 
-These are suggestions, not requirements.
-
----
-
-## Experiments
-
-Experiment with at least **two different approaches** for representing or comparing product titles.
-
-For each experiment, document:
-
-* Method used
-* Why you chose it
-* How it was implemented
-* Evaluation metric
-* Results
-* Observations
-
-A useful experiment table could look like:
-
-| Experiment   | Representation | Similarity | Threshold | Score |
-| ------------ | -------------- | ---------- | --------- | ----- |
-| Baseline     | TF-IDF         | Cosine     | ...       | ...   |
-| Experiment 1 | ...            | ...        | ...       | ...   |
-| Experiment 2 | ...            | ...        | ...       | ...   |
-
----
-
-## Threshold Analysis
-
-If your approach produces a similarity score, investigate how the matching threshold affects the results.
-
-Analyze the trade-off between:
-
-* Precision
-* Recall
-* False positives
-* False negatives
-
-Explain how you selected your final threshold.
-
----
-
-## Error Analysis
-
-Identify examples where your model:
-
-* Correctly predicts a match
-* Incorrectly predicts a match
-* Fails to identify a true match
-
-Analyze why these errors occur.
-
-For example:
-
-```text
-Title A:
-"Samsung Galaxy Buds Pro Original"
-
-Title B:
-"Samsung Wireless Earbuds Pro"
-
-Prediction:
-Match
-
-Was the prediction correct?
-Why?
-```
-
-Use actual examples from your experiments where possible.
-
----
-
-## Deliverables
-
-Submit:
-
-```text
-PartB/
-├── notebook.ipynb
-├── README.md
-└── results/
-```
-
-Your notebook should contain:
-
-* Data preparation
-* Baseline implementation
-* Experiments
-* Evaluation
-* Threshold analysis
-* Error analysis
-* Conclusions
-
----
-
-## Questions to Consider
-
-Think about the following:
-
-> How should two similar product titles be represented mathematically?
-
-> What makes TF-IDF effective or ineffective for this problem?
-
-> Would character-level features be useful?
-
-> Why might semantic embeddings outperform keyword-based approaches?
-
-> What happens when two different products have very similar titles?
-
-> What happens when the same product has completely different titles?
-
-You do not need to answer every question explicitly, but your experiments should demonstrate your understanding of the underlying problem.
-
----
-
-## Evaluation
-
-Evaluation will consider:
-
-* Quality of the baseline
-* Understanding of text representations
-* Experimental methodology
-* Metric interpretation
-* Error analysis
-* Reasoning behind design choices
-
-A more complex model is **not automatically a better solution**.
-
-A simple approach accompanied by strong reasoning and experimentation is preferable to a sophisticated approach that is not understood.
+- TF-IDF is strong for keyword-heavy titles where exact vocabulary overlap is a useful signal.
+- Word2Vec captures some semantic similarity but the short, noisy nature of product titles limits its advantage.
+- Threshold selection significantly affects precision and recall: a lower threshold increases recall (finds more matches) at the cost of more false positives.
+- Text-only matching is limited by the challenge identified in Part A: the same product can have very different wording, and different products can have very similar wording.

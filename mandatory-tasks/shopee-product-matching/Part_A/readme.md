@@ -1,132 +1,73 @@
-# Part A - Dataset Exploration
+﻿# Part A: Dataset Exploration
 
 ## Objective
 
-Before building a product matching system, it is important to understand the data you are working with.
+Understand the Shopee Product Matching dataset before attempting to build a matching system.
 
-In this section, your objective is to perform an exploratory analysis of the Shopee Product Matching dataset and identify the characteristics that make product matching challenging.
+## Dataset
 
----
+Shopee Product Matching dataset from Kaggle. The training CSV was used for the main analysis (it contains label_group representing product identity). The test CSV was inspected to understand available columns.
 
-## Tasks
+## Columns
 
-### 1. Understand the Dataset
+- posting_id: unique listing identifier
+- image: image filename for the listing
+- image_phash: perceptual hash of the image
+- 	itle: text title of the listing
+- label_group: product-group identifier (same value = same product, training only)
 
-Explore the available files and columns.
+## What Was Done
 
-Determine:
+### Dataset Statistics
 
-* What information is available for each listing?
-* What does each column represent?
-* What constitutes a product group?
-* How is the matching relationship represented?
+Computed and displayed:
+- Number of product listings and unique product groups
+- Distribution of product-group sizes (histogram + description)
+- Largest and average group size
+- Number of unique image filenames and pHash values
+- Duplicate image rows and duplicate pHash rows
+- Number of unique titles and duplicate title rows
+- Title length distribution (average, min, max, histogram)
 
----
+### Top Product Groups
 
-### 2. Analyze the Dataset
+Identified the 10 largest product groups by listing count. Visualized their sizes with a bar chart.
 
-Investigate properties such as:
+### Duplicate and Highly Similar Titles
 
-* Number of product listings
-* Number of unique product groups
-* Distribution of product-group sizes
-* Number of unique images
-* Duplicate images
-* Duplicate or highly similar titles
-* Distribution of title lengths
-* Other interesting properties you discover
+- Identified exact duplicate title rows and displayed examples with their label groups.
+- Used character n-gram TF-IDF (3-5 grams) cosine similarity on a sample of 10,000 titles to find highly similar but not identical title pairs.
+- Separated these into two categories: similar titles from the same product group (expected), and similar titles from different product groups (potential false positives for text-only matching).
 
-Present important findings using appropriate visualizations.
+### Same Product, Different Images
 
----
+Found product groups where the image filename differs across listings. Among these, further filtered for groups where the perceptual hash also differs, showing that the same product identity can have meaningfully different image representations.
 
-### 3. Investigate Product Similarity
+### Visual Similarity Across Different Products
 
-Find and visualize examples of:
+Computed Hamming distance between hexadecimal pHash values to find visually similar images from different product groups. These are examples where image similarity alone would produce false positive matches.
 
-* Multiple listings representing the same product
-* Products with different images but the same product identity
-* Products with similar titles but different product identities
-* Products with visually similar images but different product identities
-* Listings with noisy or incomplete information
+### Title Character Analysis
 
-For each example, explain what makes the matching problem difficult.
+Computed per-listing statistics: title length, fraction of non-ASCII characters, digit count, punctuation count. Visualized non-ASCII character ratio distribution to show multilingual and mixed-script titles.
 
----
+### Short and Potentially Noisy Listings
 
-### 4. Identify Challenges
+Identified listings with the shortest titles to show cases with limited textual information.
 
-Based on your analysis, identify the major challenges that a machine learning model may encounter.
+## Identified Matching Challenges
 
-For example:
+1. Noisy product titles: extra words, seller-specific text, punctuation, formatting
+2. Multilingual and mixed character sets: titles are not consistently written in one language or script
+3. Abbreviations and variants: same product, different wording
+4. Visually similar products with different identities: pHash Hamming distance can be low across groups
+5. Same product, different images: different orientations, backgrounds, crops
+6. Exact or near-duplicate images across different product identities
+7. Short titles with minimal information
+8. Highly variable group sizes: some groups have many listings, others only a few
 
-* Noisy product titles
-* Different languages
-* Abbreviations
-* Visually similar products
-* Different image backgrounds
-* Missing information
-* Variations in product presentation
+## Conclusions
 
-You are encouraged to identify challenges beyond these examples.
-
----
-
-## Deliverables
-
-Submit a notebook containing:
-
-* Dataset exploration
-* Statistical analysis
-* Visualizations
-* Example product groups
-* Identified challenges
-* Your observations and conclusions
-
----
-
-## Questions to Consider
-
-Your analysis should help you answer questions such as:
-
-> What makes two listings belong to the same product?
-
-> Can product titles alone reliably determine whether two listings match?
-
-> Can images alone reliably determine whether two listings match?
-
-> What types of examples are likely to be difficult for a machine learning model?
-
-> What information in the dataset could potentially be useful for solving the problem?
-
-You do not need to build the final matching model in this section.
-
-The purpose of this section is to **understand the problem before attempting to solve it**.
-
----
-
-## Evaluation
-
-This section will primarily be evaluated on:
-
-* Quality of exploration
-* Understanding of the dataset
-* Relevance of visualizations
-* Ability to identify meaningful patterns
-* Quality of observations
-
-Simply generating plots without explaining what they reveal will not be considered sufficient.
-
----
-
-## Submission
-
-Place your work inside:
-
-```text
-PartA/
-├── notebook.ipynb
-└── README.md
-```
-
-If additional files are required, organize them appropriately and document them in your README.
+- Titles alone cannot reliably determine product identity because similar titles appear across different groups and different titles appear within the same group.
+- Images alone are also insufficient: the same product can appear differently and different products can look visually similar.
+- A robust matching system will need to combine textual and visual signals and handle the noise and diversity in both.

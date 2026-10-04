@@ -1,29 +1,53 @@
-# Task 1: Collaborative Filtering
-
-Imagine a group of friends swapping recommendations. If two people have behaved similarly in the past, one person's choices become a useful clue for the other. Collaborative filtering formalizes that social intuition using only the interaction history: users, items, and feedback.
+﻿# Task 1: Collaborative Filtering
 
 ## Objective
 
-Build and compare two collaborative filtering approaches using the same interaction data and evaluation protocol:
+Build and compare two collaborative filtering approaches — memory-based and model-based — using the same interaction data and evaluation protocol.
 
-- **A) Memory-based collaborative filtering:** compute user-user or item-item similarities directly from the interaction matrix and generate neighborhood-based recommendations.
-- **B) Model-based collaborative filtering (matrix factorization):** learn compact user and item latent-factor vectors and use their interaction to predict preferences.
+## Dataset
 
-## Worked Example: User-Based Collaborative Filtering
+The MovieLens 100K dataset was used (moviedata.csv), which contains user-item ratings on a 1-5 star scale. The dataset has 943 users and 1,682 movies.
 
-Assume ratings out of 5 stars for four users and four movies: Alice rates *The Matrix*, *Inception*, and *Titanic* as 5, 4, and 1, but has not rated *Avatar*; Bob rates those movies 5, 5, and 1 and gives *Avatar* 4; Dave rates the first two 4 and 4 and gives *Avatar* 5; and Charlie's ratings are treated as opposite to Alice's. Using illustrative similarity scores of 0.9 for Bob, 0.8 for Dave, and -0.8 for Charlie, Bob and Dave become Alice's neighbors. The weighted prediction is $((0.9 \times 4) + (0.8 \times 5)) / (0.9 + 0.8) = 4.47$, so the system predicts approximately **4.5 stars** for *Avatar*. This traditional approach was important because it produced personalized recommendations from behavior alone; Amazon later documented a related **item-to-item** approach in its 2003 recommendation system, the basis for recommendations such as "Customers who bought this item also bought." The scores here are simplified for teaching, and the exact values depend on the similarity measure.
+## Approach
 
-## Matrix Factorization Resource
+### Data Exploration and Preprocessing
 
-For the model-based approach, see the [matrix factorization video tutorial](https://youtu.be/ZspR5PZemcs).
+- Loaded and validated the dataset: checked for missing values, duplicate user-item pairs, rating distribution, and ratings per user.
+- Retained only user, item, and ating columns. Converted all to appropriate types.
+- Computed and visualized the interaction matrix sparsity.
 
-## Requirements
+### Train / Validation / Test Split
 
-- Choose any relevant user-item interaction dataset suitable for implementing both collaborative filtering algorithms, and explain why it is appropriate. Task 01 does not require the supplied advertising dataset used by Tasks 02 and 03.
-- Compare the memory based approach with the model-based approach using the same dataset and evaluation setup.
-- Implement matrix factorization from scratch or with a clearly explained optimization procedure; do not use pretrained recommendation weights.
-- Include a short results table, plots, and a conclusion explaining when the memory-based or model-based method is preferable.
+A per-user split was applied (80% train, 10% validation, 10% test) to ensure every user has at least one training rating. No test-set tuning was performed.
 
-## Deliverables
+### Part A: Memory-Based Collaborative Filtering (User-User)
 
-Submit one notebook or clean script covering both approaches, along with the preprocessing and split decisions, comparison plots, and metrics.
+- Built a user-user cosine similarity matrix from the mean-centered training interaction matrix.
+- For each target user and unrated item, predicted the rating using a similarity-weighted average of neighbors' deviation from their mean.
+- Used validation RMSE to select the best number of neighbors k from the set {5, 10, 20, 30, 50}.
+- Evaluated the best k on the untouched test set.
+
+### Part B: Model-Based Collaborative Filtering (Matrix Factorization)
+
+- Implemented matrix factorization from scratch using stochastic gradient descent (SGD) with L2 regularization.
+- The model learns user biases, item biases, and latent factor vectors.
+- Searched over a small set of factor sizes (20, 30, 50) using validation RMSE.
+- Used early stopping on validation RMSE with patience=3 epochs.
+- Trained the best configuration and evaluated on the untouched test set.
+
+### Evaluation Metrics
+
+RMSE and MAE were reported for:
+- Global Mean Baseline
+- Memory-Based User CF (best k)
+- Matrix Factorization (best factor size)
+
+### Example Recommendations
+
+The final MF model was used to generate top-10 recommendations for an example user by predicting ratings for all unrated items and ranking them.
+
+## Key Observations
+
+- Memory-based CF is intuitive but depends heavily on neighborhood overlap; sparse data hurts its quality.
+- Matrix factorization can discover hidden preference patterns and is more compact, but requires hyperparameter choices and is less interpretable.
+- MF generally achieved lower RMSE on this dataset due to its ability to handle sparsity through latent representations.
